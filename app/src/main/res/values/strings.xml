@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ikuyo 记账</string>
+    <string name="nav_home">首页</string>
+    <string name="nav_accounting">AI 记账</string>
+    <string name="nav_mine">我的</string>
+</resources>
