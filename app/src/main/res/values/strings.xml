@@ -4,4 +4,86 @@
     <string name="nav_home">首页</string>
     <string name="nav_accounting">AI 记账</string>
     <string name="nav_mine">我的</string>
+
+    <string name="mine_title">我的</string>
+    <string name="section_data">数据</string>
+    <string name="mine_stats">统计分析</string>
+    <string name="mine_stats_sub">日/周/月与自定义区间的收支、分类、标签与预算执行</string>
+    <string name="mine_reports">月度总结</string>
+    <string name="mine_reports_sub">每月收支、预算与建议的九段总结，可保留历史版本</string>
+    <string name="mine_fixed">固定支出</string>
+    <string name="mine_fixed_sub">房租、会员、话费这类周期性支出，确认付款才生成账单</string>
+    <string name="mine_installments">分期</string>
+    <string name="mine_installments_sub">按揭还款计划，确认某一期才生成账单</string>
+    <string name="mine_debts">债务</string>
+    <string name="mine_debts_sub">借入与借出：本金不进出收支，只有利息和手续费才生成账单</string>
+    <string name="mine_savings">储蓄目标</string>
+    <string name="mine_savings_sub">存入不算支出、取出不算收入；储蓄余额增加，总余额不变</string>
+    <string name="mine_rates">汇率与币种</string>
+    <string name="mine_rates_sub">外币记账用的人民币折算汇率，保存时会一起记进账单</string>
+    <string name="mine_backup">数据备份与恢复</string>
+    <string name="mine_backup_sub">导出 JSON 备份、从备份恢复、完整性检查与清空数据</string>
+    <string name="mine_export">导出数据</string>
+    <string name="mine_export_sub">把账单、预算执行或操作历史导出成 CSV 与 Excel</string>
+    <string name="mine_import">导入数据</string>
+    <string name="mine_import_sub">从 CSV 新增账单，导入前先给出预览，确认后才写入</string>
+    <string name="mine_bills">全部账单</string>
+    <string name="mine_bills_sub">查看、筛选、删除账单</string>
+    <string name="mine_trash">回收站</string>
+    <string name="mine_trash_sub">已删除的账单不计入统计</string>
+    <string name="mine_trash_sub_count">共 %1$d 条待处理</string>
+
+    <string name="section_budget">预算与分类</string>
+    <string name="mine_budget">预算管理</string>
+    <string name="mine_budget_sub">月度总预算与分类预算</string>
+    <string name="mine_categories">分类管理</string>
+    <string name="mine_categories_sub">新增、重命名、删除自定义分类</string>
+    <string name="mine_tags">标签管理</string>
+    <string name="mine_tags_sub">按标签统计与预算，不影响金额</string>
+
+    <string name="section_record">记录</string>
+    <string name="mine_operations">操作历史</string>
+    <string name="mine_operations_sub">谁在什么时候改了什么，可逐条撤销</string>
+    <string name="mine_ai_settings">AI 设置</string>
+    <string name="mine_ai_settings_sub">接口、密钥、主备模型与人设</string>
+
+    <string name="section_appearance">外观</string>
+    <string name="theme_system">跟随系统</string>
+    <string name="theme_light">浅色</string>
+    <string name="theme_dark">深色</string>
+    <string name="appearance_dynamic">动态取色</string>
+    <string name="appearance_dynamic_sub">按系统壁纸生成配色，Android 12 及以上生效</string>
+    <string name="appearance_dynamic_unsupported">当前系统版本不支持动态取色</string>
+
+    <string name="section_language">语言</string>
+    <string name="language_hint">只影响界面文案；AI 回复语言在「AI 设置」里单独选择。</string>
+
+    <string name="section_about">关于</string>
+    <string name="about_app">应用</string>
+    <string name="about_app_value">ikuyo 记账（ikuyo Finance）</string>
+    <string name="about_version">版本</string>
+    <string name="about_data">数据</string>
+    <string name="about_data_value">全部保存在本机，不上传云端</string>
+    <string name="about_precision">金额精度</string>
+    <string name="about_precision_value">以「分」为整数单位，不使用浮点数</string>
+    <string name="about_version_value">0.6.0 · 阶段 6/6</string>
+    <string name="about_footer">统计、预算、月报与导出共用同一份本地计算口径；AI 只做解释，不改动任何金额。</string>
+    <string name="lang_system">跟随系统</string>
+    <string name="lang_zh">简体中文</string>
+    <string name="lang_ja">日本語</string>
+    <string name="lang_en">English</string>
+
+    <string name="section_reminder">提醒</string>
+    <string name="mine_reminder">每日记账提醒</string>
+    <string name="mine_reminder_sub">当天还没有记账时，在设定时间提醒一次</string>
+    <string name="mine_reminder_on">已开启 · 每天 %1$s</string>
+    <string name="mine_reminder_off">未开启</string>
+    <string name="reminder_dialog_title">选择提醒时间</string>
+    <string name="action_ok">确定</string>
+    <string name="action_cancel">取消</string>
+    <string name="reminder_permission_hint">没有通知权限，提醒无法送达。请在系统设置中允许通知后再开启。</string>
+    <string name="notify_channel_daily">每日记账提醒</string>
+    <string name="notify_channel_daily_desc">当天还没有记账时提醒你一次，避免账本断档。</string>
+    <string name="notify_daily_title">今天还没有记账</string>
+    <string name="notify_daily_text">花 10 秒记一笔，别让账本断档。</string>
 </resources>

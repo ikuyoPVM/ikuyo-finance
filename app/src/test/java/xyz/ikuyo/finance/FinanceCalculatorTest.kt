@@ -52,12 +52,13 @@ class FinanceCalculatorTest {
     }
 
     @Test
-    fun `balance adds savings to total only`() {
+    fun `balance moves savings out of available without changing total`() {
         val bills = listOf(bill(BillType.EXPENSE, 20_000L, today))
-        val summary = FinanceCalculator.balance(bills, savingsMinor = 500_000L)
-        assertEquals(-20_000L, summary.availableMinor)
-        assertEquals(500_000L, summary.savingsMinor)
-        assertEquals(480_000L, summary.totalMinor)
+        val summary = FinanceCalculator.balance(bills, savingsMinor = 5_000L)
+        // 可用余额 = 账单净额 − 储蓄余额；储蓄是划转，总余额不变。
+        assertEquals(-25_000L, summary.availableMinor)
+        assertEquals(5_000L, summary.savingsMinor)
+        assertEquals(-20_000L, summary.totalMinor)
     }
 
     @Test

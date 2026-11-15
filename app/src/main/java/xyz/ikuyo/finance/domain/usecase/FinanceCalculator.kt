@@ -4,7 +4,11 @@ import xyz.ikuyo.finance.core.Time
 import xyz.ikuyo.finance.domain.model.BalanceSummary
 import xyz.ikuyo.finance.domain.model.Bill
 import xyz.ikuyo.finance.domain.model.BillType
+import xyz.ikuyo.finance.domain.model.Budget
+import xyz.ikuyo.finance.domain.model.BudgetAlertLevel
+import xyz.ikuyo.finance.domain.model.BudgetScope
 import xyz.ikuyo.finance.domain.model.BudgetStatus
+import xyz.ikuyo.finance.domain.model.BudgetWindow
 import xyz.ikuyo.finance.domain.model.CategorySpend
 import xyz.ikuyo.finance.domain.model.DailySpend
 import xyz.ikuyo.finance.domain.model.HomeStats
@@ -21,9 +25,17 @@ import java.time.YearMonth
  */
 object FinanceCalculator {
 
+    /**
+     * 余额口径：储蓄是资金划转，不产生账单。
+     * - 净额 = 收入 − 支出 + 退款（只由账单决定）
+     * - 储蓄余额 = 已划入储蓄的金额（≥ 0）
+     * - 可用余额 = 净额 − 储蓄余额
+     * - 总余额 = 可用余额 + 储蓄余额 = 净额（存入/取出都不改变总余额）
+     */
     fun balance(bills: List<Bill>, savingsMinor: Long = 0L): BalanceSummary {
-        val available = bills.sumOf { it.signedImpactMinor }
-        return BalanceSummary(availableMinor = available, savingsMinor = savingsMinor)
+        val net = bills.sumOf { it.signedImpactMinor }
+        val savings = savingsMinor.coerceAtLeast(0L)
+        return BalanceSummary(availableMinor = net - savings, savingsMinor = savings)
     }
 
     fun homeStats(bills: List<Bill>, today: LocalDate = LocalDate.now(Time.zone)): HomeStats {
@@ -99,16 +111,74 @@ object FinanceCalculator {
         periodStart: Long,
         periodEnd: Long,
         today: LocalDate = LocalDate.now(Time.zone),
+        carryOverMinor: Long = 0L,
+        windowLabel: String = "",
     ): BudgetStatus {
         val spent = bills
             .filter { it.occurredAt in periodStart..periodEnd }
             .sumOf { it.expenseImpactMinor }
+        val available = (budgetAmountMinor ?: 0L) + carryOverMinor
         return BudgetStatus(
             amountMinor = budgetAmountMinor,
+            carryOverMinor = carryOverMinor,
             spentMinor = spent,
             periodStart = periodStart,
             periodEnd = periodEnd,
             daysLeft = Time.daysLeft(periodEnd, today),
+            windowLabel = windowLabel,
+            alertLevel = if (budgetAmountMinor == null) {
+                BudgetAlertLevel.NORMAL
+            } else {
+                BudgetAlertLevel.of(available, spent)
+            },
+        )
+    }
+
+    /**
+     * 按「预算规则 + 当前区间」计算预算执行情况。
+     *
+     * 结转规则（计划书 8.1）：用户开启结转时，上一周期的结余计入本周期；
+     * 上一周期超支则不结转（超支不追加上去，保持周期独立）。
+     */
+    fun budgetStatusOf(
+        bills: List<Bill>,
+        budget: Budget?,
+        window: BudgetWindow,
+        today: LocalDate = LocalDate.now(Time.zone),
+        tagBillIds: Set<Long>? = null,
+    ): BudgetStatus {
+        // 标签预算只统计带该标签的账单；其余维度统计全部账单。
+        val relevant = if (budget?.scope == BudgetScope.TAG && tagBillIds != null) {
+            bills.filter { it.id in tagBillIds }
+        } else {
+            bills
+        }
+        val carry = if (budget != null && budget.carryOver) {
+            val previous = BudgetPeriods.previous(
+                type = budget.periodType,
+                current = window,
+                customStart = budget.customStart,
+                customEnd = budget.customEnd,
+            )
+            if (previous == null) {
+                0L
+            } else {
+                val previousSpent = relevant
+                    .filter { it.occurredAt in previous.start..previous.endInclusive }
+                    .sumOf { it.expenseImpactMinor }
+                (budget.amountMinor - previousSpent).coerceAtLeast(0L)
+            }
+        } else {
+            0L
+        }
+        return budgetStatus(
+            bills = relevant,
+            budgetAmountMinor = budget?.amountMinor,
+            periodStart = window.start,
+            periodEnd = window.endInclusive,
+            today = today,
+            carryOverMinor = carry,
+            windowLabel = budget?.let { BudgetPeriods.label(it.periodType, window) } ?: "",
         )
     }
 

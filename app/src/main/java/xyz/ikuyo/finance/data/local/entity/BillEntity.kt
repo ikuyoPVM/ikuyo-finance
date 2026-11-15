@@ -45,6 +45,10 @@ data class BillEntity(
     val source: String = "MANUAL",
     /** 退款关联的原始消费账单 */
     val refundOfBillId: Long? = null,
+    /** RateSource.dbValue：保存时所用汇率的来源 */
+    val rateSource: String = "MANUAL",
+    /** 保存时所用汇率的写入时间 */
+    val rateUpdatedAt: Long = 0L,
     /** 幂等键 */
     val clientKey: String,
     val deleted: Boolean = false,

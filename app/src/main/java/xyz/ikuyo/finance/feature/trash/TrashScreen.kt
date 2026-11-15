@@ -2,6 +2,7 @@ package xyz.ikuyo.finance.feature.trash
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,12 +13,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -47,6 +51,7 @@ fun TrashScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var confirmClear by remember { mutableStateOf(false) }
+    var confirmBatchPurge by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -59,6 +64,29 @@ fun TrashScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        bottomBar = {
+            if (state.selectionMode) {
+                Surface(tonalElevation = 3.dp) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "已选 ${state.selectedCount} 笔",
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = { viewModel.restoreSelected() }) { Text("恢复") }
+                        TextButton(onClick = { confirmBatchPurge = true }) {
+                            Text("彻底删除", color = MaterialTheme.colorScheme.error)
+                        }
+                        TextButton(onClick = { viewModel.clearSelection() }) { Text("取消") }
+                    }
+                }
+            }
+        },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -81,12 +109,15 @@ fun TrashScreen(
                     modifier = Modifier.weight(1f),
                 )
                 if (!state.isEmpty) {
+                    TextButton(onClick = { viewModel.toggleSelectAll() }) {
+                        Text(if (state.allSelected) "取消全选" else "全选")
+                    }
                     TextButton(onClick = { confirmClear = true }) { Text("清空") }
                 }
             }
 
             Text(
-                text = "回收站内的账单不计入余额与统计。",
+                text = "回收站内的账单不计入余额与统计；勾选后可批量恢复或彻底删除。",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
@@ -97,12 +128,16 @@ fun TrashScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+                    contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(items = state.bills, key = { it.id }) { bill ->
                         SectionCard {
                             Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(
+                                    checked = bill.id in state.selectedIds,
+                                    onCheckedChange = { viewModel.toggleSelect(bill.id) },
+                                )
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = bill.note.ifBlank { bill.categoryName ?: "未分类" },
@@ -125,6 +160,15 @@ fun TrashScreen(
                             }
                         }
                     }
+                    item {
+                        HorizontalDivider()
+                        Text(
+                            text = "恢复会退回原来的消费时间与分类；彻底删除后无法恢复，也不可撤销。",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 12.dp),
+                        )
+                    }
                 }
             }
         }
@@ -145,6 +189,25 @@ fun TrashScreen(
             },
             dismissButton = {
                 TextButton(onClick = { confirmClear = false }) { Text("取消") }
+            },
+        )
+    }
+
+    if (confirmBatchPurge) {
+        AlertDialog(
+            onDismissRequest = { confirmBatchPurge = false },
+            title = { Text("彻底删除所选的 ${state.selectedCount} 笔账单？") },
+            text = { Text("彻底删除后无法恢复，也不可撤销；余额与统计会立即更新。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.purgeSelected()
+                        confirmBatchPurge = false
+                    },
+                ) { Text("彻底删除") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmBatchPurge = false }) { Text("取消") }
             },
         )
     }

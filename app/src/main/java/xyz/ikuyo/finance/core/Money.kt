@@ -43,6 +43,20 @@ object Money {
         return if (showSymbol) symbolOf(currency) + text else text
     }
 
+    /**
+     * 输出不带货币符号、不带千分位的纯数字文本（如 `-1146.70`）。
+     *
+     * 用于 CSV / Excel 等在表格软件里必须保持数字语义的场景：带千分位的 "1,146.70"
+     * 会被当成两个单元格或文本。展示用的文本请用 [format]。
+     */
+    fun plain(minorUnits: Long, currency: String = BASE_CURRENCY): String {
+        val decimals = decimalsOf(currency)
+        return BigDecimal.valueOf(minorUnits)
+            .movePointLeft(decimals)
+            .setScale(decimals, RoundingMode.HALF_UP)
+            .toPlainString()
+    }
+
     /** 格式化带正负号（用于净收支）。 */
     fun formatSigned(minorUnits: Long, currency: String = BASE_CURRENCY): String =
         if (minorUnits >= 0) "+" + format(minorUnits, currency) else "-" + format(-minorUnits, currency)
@@ -107,6 +121,15 @@ object Money {
 
     fun scaledFromRate(rate: BigDecimal): Long =
         rate.movePointRight(6).setScale(0, RoundingMode.HALF_UP).longValueExact()
+
+    /**
+     * 汇率展示文本：最多 4 位小数，并去掉末尾多余的 0。
+     *
+     * 汇率内部按 6 位小数存储（7_119_972 → 7.119972），直接展示会有六位数字噪音，
+     * 而 4 位已经足够区分真实汇率差异；7.120000 → "7.12"、6.672004 → "6.672"。
+     */
+    fun formatRate(scaled: Long): String =
+        rateFromScaled(scaled).setScale(4, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
 
     private fun formatter(decimals: Int): DecimalFormat {
         // 小数位必须用 0 而不是 #：金额显示需要固定小数位（12.00 而不是 12），# 会吞掉末尾的 0。

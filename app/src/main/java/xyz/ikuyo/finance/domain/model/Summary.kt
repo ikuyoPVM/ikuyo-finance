@@ -44,17 +44,28 @@ data class DailySpend(
 /** 预算执行情况。 */
 data class BudgetStatus(
     val amountMinor: Long? = null,
+    /** 上一周期结转进来的结余（超支不结转，因此恒 >= 0）。 */
+    val carryOverMinor: Long = 0L,
     val spentMinor: Long = 0L,
     val periodStart: Long = 0L,
     val periodEnd: Long = 0L,
     val daysLeft: Int = 0,
+    val windowLabel: String = "",
+    val alertLevel: BudgetAlertLevel = BudgetAlertLevel.NORMAL,
 ) {
-    val remainingMinor: Long get() = (amountMinor ?: 0L) - spentMinor
-    val isOverBudget: Boolean get() = amountMinor != null && remainingMinor < 0
+    /** 本周期真正可用的额度 = 预算金额 + 结转。 */
+    val availableMinor: Long get() = (amountMinor ?: 0L) + carryOverMinor
+
+    val hasBudget: Boolean get() = amountMinor != null && amountMinor > 0L
+
+    val remainingMinor: Long get() = availableMinor - spentMinor
+
+    val isOverBudget: Boolean get() = hasBudget && remainingMinor < 0
 
     val progress: Float
         get() {
-            val total = amountMinor ?: return 0f
+            if (!hasBudget) return 0f
+            val total = availableMinor
             if (total <= 0L) return 0f
             return (spentMinor.toFloat() / total.toFloat()).coerceAtLeast(0f)
         }
@@ -62,9 +73,16 @@ data class BudgetStatus(
     /** 每日可用预算：剩余预算 / 剩余天数（含今日）；已超支时为 0。 */
     val dailyAvailableMinor: Long
         get() {
-            if (amountMinor == null) return 0L
+            if (!hasBudget) return 0L
             if (remainingMinor <= 0L) return 0L
             val days = daysLeft.coerceAtLeast(1)
             return remainingMinor / days
+        }
+
+    /** 已用百分比（四舍五入到整数），用于提示文案。 */
+    val usedPercent: Int
+        get() {
+            if (!hasBudget || availableMinor <= 0L) return 0
+            return ((spentMinor * 100L + availableMinor / 2) / availableMinor).toInt()
         }
 }

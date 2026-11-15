@@ -7,12 +7,31 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import xyz.ikuyo.finance.data.local.dao.BillDao
 import xyz.ikuyo.finance.data.local.dao.BudgetDao
+import xyz.ikuyo.finance.data.local.dao.MonthlyReportDao
+import xyz.ikuyo.finance.data.local.dao.BudgetTemplateDao
+import xyz.ikuyo.finance.data.local.dao.FixedExpenseDao
+import xyz.ikuyo.finance.data.local.dao.InstallmentDao
+import xyz.ikuyo.finance.data.local.dao.OperationDao
 import xyz.ikuyo.finance.data.local.dao.CategoryDao
+import xyz.ikuyo.finance.data.local.dao.DebtDao
+import xyz.ikuyo.finance.data.local.dao.SavingsDao
 import xyz.ikuyo.finance.data.local.dao.TagDao
 import xyz.ikuyo.finance.data.local.entity.BillEntity
+import xyz.ikuyo.finance.data.local.entity.DebtEntity
+import xyz.ikuyo.finance.data.local.entity.DebtPaymentEntity
+import xyz.ikuyo.finance.data.local.entity.SavingsEntryEntity
+import xyz.ikuyo.finance.data.local.entity.SavingsGoalEntity
+import xyz.ikuyo.finance.data.local.entity.BillOperationEntity
 import xyz.ikuyo.finance.data.local.entity.BillTagCrossRef
+import xyz.ikuyo.finance.data.local.entity.BudgetChangeEntity
 import xyz.ikuyo.finance.data.local.entity.BudgetEntity
+import xyz.ikuyo.finance.data.local.entity.BudgetTemplateEntity
+import xyz.ikuyo.finance.data.local.entity.MonthlyReportEntity
 import xyz.ikuyo.finance.data.local.entity.CategoryEntity
+import xyz.ikuyo.finance.data.local.entity.FixedExpenseEntity
+import xyz.ikuyo.finance.data.local.entity.FixedExpensePaymentEntity
+import xyz.ikuyo.finance.data.local.entity.InstallmentEntity
+import xyz.ikuyo.finance.data.local.entity.InstallmentPaymentEntity
 import xyz.ikuyo.finance.data.local.entity.TagEntity
 
 @Database(
@@ -22,8 +41,20 @@ import xyz.ikuyo.finance.data.local.entity.TagEntity
         TagEntity::class,
         BillTagCrossRef::class,
         BudgetEntity::class,
+        BudgetChangeEntity::class,
+        BudgetTemplateEntity::class,
+        BillOperationEntity::class,
+        MonthlyReportEntity::class,
+        FixedExpenseEntity::class,
+        FixedExpensePaymentEntity::class,
+        InstallmentEntity::class,
+        InstallmentPaymentEntity::class,
+        DebtEntity::class,
+        DebtPaymentEntity::class,
+        SavingsGoalEntity::class,
+        SavingsEntryEntity::class,
     ],
-    version = 1,
+    version = 9,
     exportSchema = false,
 )
 abstract class IkuyoDatabase : RoomDatabase() {
@@ -32,6 +63,14 @@ abstract class IkuyoDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
     abstract fun tagDao(): TagDao
     abstract fun budgetDao(): BudgetDao
+    abstract fun budgetTemplateDao(): BudgetTemplateDao
+    abstract fun operationDao(): OperationDao
+    abstract fun monthlyReportDao(): MonthlyReportDao
+    abstract fun fixedExpenseDao(): FixedExpenseDao
+    abstract fun installmentDao(): InstallmentDao
+    abstract fun debtDao(): DebtDao
+
+    abstract fun savingsDao(): SavingsDao
 
     companion object {
         private const val DB_NAME = "ikuyo_finance.db"

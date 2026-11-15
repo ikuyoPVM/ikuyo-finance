@@ -18,6 +18,7 @@ import xyz.ikuyo.finance.domain.model.BillDraft
 import xyz.ikuyo.finance.domain.model.BillType
 import xyz.ikuyo.finance.domain.model.Category
 import xyz.ikuyo.finance.domain.model.PaymentMethod
+import xyz.ikuyo.finance.domain.model.Tag
 import xyz.ikuyo.finance.ui.components.BillEntryForm
 
 /**
@@ -29,6 +30,7 @@ fun QuickEntrySheet(
     type: BillType,
     categories: List<Category>,
     lastPaymentMethod: PaymentMethod?,
+    tags: List<Tag> = emptyList(),
     onDismiss: () -> Unit,
     onSave: (BillDraft) -> Unit,
 ) {
@@ -55,6 +57,7 @@ fun QuickEntrySheet(
                 categories = categories,
                 initialType = type,
                 initialPayment = lastPaymentMethod,
+                tags = tags,
                 allowTypeSwitch = true,
                 confirmText = "保存",
                 onConfirm = onSave,

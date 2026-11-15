@@ -28,6 +28,8 @@ object Time {
         DateTimeFormatter.ofPattern("yyyy年M月", Locale.CHINA)
     private val timeFormatter: DateTimeFormatter =
         DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault())
+    private val monthDayFormatter: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("M月d日", Locale.CHINA)
 
     fun nowMillis(): Long = System.currentTimeMillis()
 
@@ -88,6 +90,11 @@ object Time {
 
     fun endOfMonthInclusive(month: YearMonth = YearMonth.now(zone)): Long =
         endOfMonthExclusive(month) - 1
+
+    fun endOfDayInclusive(date: LocalDate): Long = endOfDayExclusive(date) - 1
+
+    /** M月d日 */
+    fun formatMonthDay(millis: Long): String = monthDayFormatter.format(toLocalDate(millis))
 
     fun previousMonth(month: YearMonth = YearMonth.now(zone)): YearMonth = month.minusMonths(1)
 }

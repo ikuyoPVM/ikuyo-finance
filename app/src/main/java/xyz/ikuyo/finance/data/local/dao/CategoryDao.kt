@@ -41,11 +41,26 @@ interface CategoryDao {
     suspend fun deleteCustom(id: Long)
 }
 
+/** 标签使用次数（按标签统计关联账单数）。 */
+data class TagUsage(
+    val tagId: Long,
+    val count: Int,
+)
+
 @Dao
 interface TagDao {
 
     @Query("SELECT * FROM tags ORDER BY name ASC")
     fun observeAll(): Flow<List<TagEntity>>
+
+    @Query("SELECT * FROM tags ORDER BY name ASC")
+    suspend fun getAll(): List<TagEntity>
+
+    @Query("SELECT * FROM tags WHERE id = :id LIMIT 1")
+    suspend fun findById(id: Long): TagEntity?
+
+    @Query("SELECT * FROM tags WHERE name = :name LIMIT 1")
+    suspend fun findByName(name: String): TagEntity?
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(tag: TagEntity): Long
@@ -53,14 +68,21 @@ interface TagDao {
     @Update
     suspend fun update(tag: TagEntity)
 
+    /** 删除标签只解除关联，账单本身不受影响。 */
     @Query("DELETE FROM tags WHERE id = :id")
     suspend fun delete(id: Long)
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun link(crossRef: BillTagCrossRef)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun linkAll(crossRefs: List<BillTagCrossRef>)
+
     @Query("DELETE FROM bill_tags WHERE billId = :billId AND tagId = :tagId")
     suspend fun unlink(billId: Long, tagId: Long)
+
+    @Query("DELETE FROM bill_tags WHERE billId = :billId")
+    suspend fun clearBillLinks(billId: Long)
 
     @Query(
         """
@@ -71,4 +93,16 @@ interface TagDao {
         """
     )
     suspend fun tagsOf(billId: Long): List<TagEntity>
+
+    @Query("SELECT tagId FROM bill_tags WHERE billId = :billId")
+    suspend fun tagIdsOf(billId: Long): List<Long>
+
+    @Query("SELECT * FROM bill_tags")
+    fun observeAllLinks(): Flow<List<BillTagCrossRef>>
+
+    @Query("SELECT billId FROM bill_tags WHERE tagId = :tagId")
+    fun observeBillIdsOf(tagId: Long): Flow<List<Long>>
+
+    @Query("SELECT tagId, COUNT(*) AS count FROM bill_tags GROUP BY tagId")
+    fun observeUsage(): Flow<List<TagUsage>>
 }

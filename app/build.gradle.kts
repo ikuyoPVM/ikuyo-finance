@@ -1,8 +1,21 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
+}
+
+/**
+ * 发布签名信息从仓库根目录的 keystore.properties 读取（该文件与 *.jks 都在 .gitignore 里）。
+ * 文件不存在时保持 release 未签名，保证 clone 下来的人仍能跑 debug 与单元测试。
+ */
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) {
+        file.inputStream().use { load(it) }
+    }
 }
 
 android {
@@ -13,11 +26,24 @@ android {
         applicationId = "xyz.ikuyo.finance"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0-dev"
+        versionCode = 7
+        versionName = "0.6.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
+    }
+
+    // signingConfigs 必须在 buildTypes 之前声明，否则 getByName("release") 找不到。
+    signingConfigs {
+        create("release") {
+            val storePath = keystoreProperties.getProperty("storeFile")
+            if (storePath != null) {
+                storeFile = rootProject.file(storePath)
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
@@ -26,11 +52,13 @@ android {
             versionNameSuffix = "-debug"
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 

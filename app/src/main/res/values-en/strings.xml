@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ikuyo Finance</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_accounting">AI Entry</string>
+    <string name="nav_mine">Mine</string>
+
+    <string name="mine_title">Mine</string>
+    <string name="section_data">Data</string>
+    <string name="mine_stats">Statistics</string>
+    <string name="mine_stats_sub">Income, expense, categories, tags and budgets for day, week, month or a custom range</string>
+    <string name="mine_reports">Monthly review</string>
+    <string name="mine_reports_sub">Nine-part monthly summary with kept history versions</string>
+    <string name="mine_fixed">Fixed expenses</string>
+    <string name="mine_fixed_sub">Rent, memberships and phone bills; a bill is created only when you confirm payment</string>
+    <string name="mine_installments">Installments</string>
+    <string name="mine_installments_sub">Repayment plans; a bill is created only for the confirmed period</string>
+    <string name="mine_debts">Debts</string>
+    <string name="mine_debts_sub">Lending and borrowing: principal stays out of income and expense, only interest and fees create bills</string>
+    <string name="mine_savings">Savings goals</string>
+    <string name="mine_savings_sub">Deposits are not expense, withdrawals are not income; savings grow, total balance stays</string>
+    <string name="mine_rates">Rates and currencies</string>
+    <string name="mine_rates_sub">Conversion rates used for foreign currency bills, stored with each bill</string>
+    <string name="mine_backup">Backup and restore</string>
+    <string name="mine_backup_sub">Export a JSON backup, restore from one, run integrity checks or wipe data</string>
+    <string name="mine_export">Export</string>
+    <string name="mine_export_sub">Export bills, budget execution or operation history as CSV or Excel</string>
+    <string name="mine_import">Import</string>
+    <string name="mine_import_sub">Add bills from a CSV; a preview is shown before anything is written</string>
+    <string name="mine_bills">All bills</string>
+    <string name="mine_bills_sub">View, filter and delete bills</string>
+    <string name="mine_trash">Trash</string>
+    <string name="mine_trash_sub">Deleted bills are left out of statistics</string>
+    <string name="mine_trash_sub_count">%1$d waiting to be handled</string>
+
+    <string name="section_budget">Budget and categories</string>
+    <string name="mine_budget">Budgets</string>
+    <string name="mine_budget_sub">Total and per-category monthly budgets</string>
+    <string name="mine_categories">Categories</string>
+    <string name="mine_categories_sub">Add, rename or delete custom categories</string>
+    <string name="mine_tags">Tags</string>
+    <string name="mine_tags_sub">Tag-based statistics and budgets, amounts unaffected</string>
+
+    <string name="section_record">Records</string>
+    <string name="mine_operations">Operation history</string>
+    <string name="mine_operations_sub">What changed and when, each entry can be undone</string>
+    <string name="mine_ai_settings">AI settings</string>
+    <string name="mine_ai_settings_sub">Endpoint, key, primary and backup models, persona</string>
+
+    <string name="section_appearance">Appearance</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="appearance_dynamic">Dynamic color</string>
+    <string name="appearance_dynamic_sub">Colors derived from the wallpaper, Android 12 and above</string>
+    <string name="appearance_dynamic_unsupported">Dynamic color is unavailable on this Android version</string>
+
+    <string name="section_language">Language</string>
+    <string name="language_hint">Affects this interface only; the AI reply language is chosen separately in AI settings.</string>
+
+    <string name="section_about">About</string>
+    <string name="about_app">App</string>
+    <string name="about_app_value">ikuyo Finance</string>
+    <string name="about_version">Version</string>
+    <string name="about_data">Data</string>
+    <string name="about_data_value">Everything stays on this device, nothing is uploaded</string>
+    <string name="about_precision">Amount precision</string>
+    <string name="about_precision_value">Integer cents, never floating point</string>
+    <string name="about_version_value">0.6.0 · Phase 6/6</string>
+    <string name="about_footer">Statistics, budgets, monthly reports and exports all share one local calculation; the AI only explains, never changes amounts.</string>
+    <string name="lang_system">Follow system</string>
+    <string name="lang_zh">简体中文</string>
+    <string name="lang_ja">日本語</string>
+    <string name="lang_en">English</string>
+
+    <string name="section_reminder">Reminders</string>
+    <string name="mine_reminder">Daily check-in reminder</string>
+    <string name="mine_reminder_sub">Remind me once at the chosen time if nothing has been recorded that day</string>
+    <string name="mine_reminder_on">On · daily at %1$s</string>
+    <string name="mine_reminder_off">Off</string>
+    <string name="reminder_dialog_title">Pick a reminder time</string>
+    <string name="action_ok">OK</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="reminder_permission_hint">Notifications are not allowed, so the reminder cannot be delivered. Allow notifications in system settings first.</string>
+    <string name="notify_channel_daily">Daily check-in reminder</string>
+    <string name="notify_channel_daily_desc">Reminds you once a day when nothing has been recorded yet.</string>
+    <string name="notify_daily_title">Nothing recorded today</string>
+    <string name="notify_daily_text">Take 10 seconds to log one entry so the book stays complete.</string>
+</resources>

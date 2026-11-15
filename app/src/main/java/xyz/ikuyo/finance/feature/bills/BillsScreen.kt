@@ -57,6 +57,7 @@ import java.time.LocalDate
 @Composable
 fun BillsScreen(
     onOpenTrash: () -> Unit = {},
+    onOpenDetail: (Long) -> Unit = {},
     viewModel: BillsViewModel = viewModel(factory = BillsViewModel.Factory),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -201,7 +202,7 @@ fun BillsScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 BillRow(
                                     bill = bill,
-                                    onClick = { },
+                                    onClick = { onOpenDetail(bill.id) },
                                     modifier = Modifier.weight(1f),
                                 )
                                 IconButton(onClick = { viewModel.delete(bill) }) {

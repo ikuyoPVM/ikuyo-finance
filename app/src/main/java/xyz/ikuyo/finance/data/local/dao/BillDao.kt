@@ -49,6 +49,17 @@ interface BillDao {
     @Query("SELECT * FROM bills WHERE id = :id LIMIT 1")
     suspend fun findById(id: Long): BillEntity?
 
+    @Query(
+        """
+        SELECT b.*, c.name AS categoryName, c.emoji AS categoryEmoji
+        FROM bills b
+        LEFT JOIN categories c ON c.id = b.categoryId
+        WHERE b.id = :id
+        LIMIT 1
+        """
+    )
+    suspend fun findWithCategory(id: Long): BillWithCategory?
+
     @Query("SELECT * FROM bills WHERE clientKey = :clientKey LIMIT 1")
     suspend fun findByClientKey(clientKey: String): BillEntity?
 
