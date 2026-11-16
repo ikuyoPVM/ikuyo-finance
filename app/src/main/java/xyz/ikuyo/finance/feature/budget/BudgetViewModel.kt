@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import xyz.ikuyo.finance.core.Money
 import xyz.ikuyo.finance.core.Time
+import xyz.ikuyo.finance.core.NoticeKind
 import xyz.ikuyo.finance.core.UiEvent
 import xyz.ikuyo.finance.di.Graph
 import xyz.ikuyo.finance.domain.model.Bill
@@ -507,8 +508,8 @@ class BudgetViewModel : ViewModel() {
         }
     }
 
-    private fun emit(text: String) {
-        viewModelScope.launch { _events.emit(UiEvent.Message(text)) }
+    private fun emit(text: String, kind: NoticeKind = NoticeKind.Success) {
+        viewModelScope.launch { _events.emit(UiEvent.Message(text, kind)) }
     }
 
     companion object {

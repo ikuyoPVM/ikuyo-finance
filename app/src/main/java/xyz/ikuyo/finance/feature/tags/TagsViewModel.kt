@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import xyz.ikuyo.finance.core.Time
+import xyz.ikuyo.finance.core.NoticeKind
 import xyz.ikuyo.finance.core.UiEvent
 import xyz.ikuyo.finance.data.repository.BillRepository
 import xyz.ikuyo.finance.data.repository.TagRepository
@@ -84,7 +85,7 @@ class TagsViewModel(
         viewModelScope.launch {
             tagRepository.add(name, colorArgb)
                 .onSuccess { emit("已添加标签：${name.trim()}") }
-                .onFailure { emit(it.message ?: "添加标签失败") }
+                .onFailure { emit(it.message ?: "添加标签失败", NoticeKind.Error) }
         }
     }
 
@@ -92,7 +93,7 @@ class TagsViewModel(
         viewModelScope.launch {
             tagRepository.rename(id, name)
                 .onSuccess { emit("标签已改名：${name.trim()}") }
-                .onFailure { emit(it.message ?: "改名失败") }
+                .onFailure { emit(it.message ?: "改名失败", NoticeKind.Error) }
         }
     }
 
@@ -107,8 +108,8 @@ class TagsViewModel(
         }
     }
 
-    private fun emit(text: String) {
-        channel.trySend(UiEvent.Message(text))
+    private fun emit(text: String, kind: NoticeKind = NoticeKind.Success) {
+        channel.trySend(UiEvent.Message(text, kind))
     }
 
     companion object {

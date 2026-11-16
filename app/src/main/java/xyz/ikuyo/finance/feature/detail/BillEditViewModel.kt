@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import xyz.ikuyo.finance.core.NoticeKind
 import xyz.ikuyo.finance.core.UiEvent
 import xyz.ikuyo.finance.data.repository.BillRepository
 import xyz.ikuyo.finance.data.repository.CategoryRepository
@@ -71,7 +72,7 @@ class BillEditViewModel(
                     savedFlag.value = true
                     channel.send(UiEvent.Message("已保存修改，可在操作历史撤销"))
                 }
-                .onFailure { channel.send(UiEvent.Message(it.message ?: "保存失败")) }
+                .onFailure { channel.send(UiEvent.Message(it.message ?: "保存失败", NoticeKind.Error)) }
         }
     }
 

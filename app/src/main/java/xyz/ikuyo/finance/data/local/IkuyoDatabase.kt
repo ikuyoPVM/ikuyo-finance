@@ -54,7 +54,7 @@ import xyz.ikuyo.finance.data.local.entity.TagEntity
         SavingsGoalEntity::class,
         SavingsEntryEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = false,
 )
 abstract class IkuyoDatabase : RoomDatabase() {

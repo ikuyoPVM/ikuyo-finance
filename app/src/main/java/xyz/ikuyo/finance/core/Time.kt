@@ -44,6 +44,12 @@ object Time {
     fun startOfDay(date: LocalDate): Long =
         date.atStartOfDay(zone).toInstant().toEpochMilli()
 
+    /**
+     * 账单日期只精确到日，写入前统一归一化到当天本地零点。
+     * 保留原日历日，不会因为截断而让账单跑到前一天或后一天。
+     */
+    fun startOfDayMillis(millis: Long): Long = startOfDay(toLocalDate(millis))
+
     fun endOfDayExclusive(date: LocalDate): Long =
         date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
 

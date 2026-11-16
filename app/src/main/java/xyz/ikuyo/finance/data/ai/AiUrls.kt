@@ -13,6 +13,8 @@ object AiUrls {
 
     const val CHAT_PATH = "chat/completions"
 
+    const val MODELS_PATH = "models"
+
     fun normalizeBaseUrl(raw: String): Result<String> {
         val input = raw.trim()
         if (input.isEmpty()) return Result.failure(AiConfigException("Base URL 不能为空"))
@@ -51,6 +53,20 @@ object AiUrls {
     fun chatUrl(baseUrl: String): String {
         val normalized = normalizeBaseUrl(baseUrl).getOrElse { return baseUrl.trimEnd('/') + "/" + CHAT_PATH }
         return normalized.trimEnd('/') + "/" + CHAT_PATH
+    }
+
+    /**
+     * 模型列表地址。
+     *
+     * 先做与 [chatUrl] 相同的规范化，再拼 `models`：
+     * 用户填 `https://host` 或 `https://host/v1` 都会得到 `https://host/v1/models`，
+     * 填完整 `/models` 时也不会出现 `/models/models`。
+     */
+    fun modelsUrl(baseUrl: String): String {
+        val normalized = normalizeBaseUrl(baseUrl).getOrElse { return baseUrl.trimEnd('/') + "/" + MODELS_PATH }
+        val trimmed = normalized.trimEnd('/')
+        if (trimmed.endsWith("/$MODELS_PATH", ignoreCase = true)) return trimmed
+        return "$trimmed/$MODELS_PATH"
     }
 
     /** 只用于界面展示，绝不带密钥。 */

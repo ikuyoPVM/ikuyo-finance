@@ -24,7 +24,6 @@ object CsvExporter {
     val BILL_COLUMNS = listOf(
         "账单ID",
         "日期",
-        "时间",
         "类型",
         "原币金额",
         "币种",
@@ -79,7 +78,6 @@ object CsvExporter {
                 listOf(
                     bill.id.toString(),
                     Time.toLocalDate(bill.occurredAt).toString(),
-                    Time.formatTime(bill.occurredAt),
                     bill.type.label,
                     number(Money.plain(bill.amountMinor, bill.currency)),
                     bill.currency,

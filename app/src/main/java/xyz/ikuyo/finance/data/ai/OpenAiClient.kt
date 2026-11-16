@@ -9,17 +9,38 @@ import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
 import java.net.URL
 
-/** 对话消息。role 只用 OpenAI 的三种取值。 */
-data class ChatMessage(val role: String, val content: String) {
+/** 模型请求调用的一次工具：id 由服务商给出，回填时原样带回。 */
+data class ToolCall(val id: String, val name: String, val arguments: String)
+
+/** 对话消息。role 只用 OpenAI 的四种取值（tool 用于回填工具结果）。 */
+data class ChatMessage(
+    val role: String,
+    val content: String,
+    /** assistant 消息里模型请求的工具调用，序列化时写成 tool_calls。 */
+    val toolCalls: List<ToolCall> = emptyList(),
+    /** role=tool 时对应哪一次调用。 */
+    val toolCallId: String? = null,
+) {
     companion object {
         const val SYSTEM = "system"
         const val USER = "user"
         const val ASSISTANT = "assistant"
+        const val TOOL = "tool"
 
         fun system(text: String) = ChatMessage(SYSTEM, text)
         fun user(text: String) = ChatMessage(USER, text)
         fun assistant(text: String) = ChatMessage(ASSISTANT, text)
+        fun assistantToolCalls(calls: List<ToolCall>) =
+            ChatMessage(ASSISTANT, "", toolCalls = calls)
+
+        fun toolResult(callId: String, text: String) =
+            ChatMessage(TOOL, text, toolCallId = callId)
     }
+}
+
+/** 一轮回复：要么是文本，要么是一批工具调用，也可能两者都有。 */
+data class ChatTurn(val content: String?, val toolCalls: List<ToolCall>) {
+    val hasToolCalls: Boolean get() = toolCalls.isNotEmpty()
 }
 
 data class ChatRequest(
@@ -36,6 +57,10 @@ data class TransportResponse(val status: Int, val body: String)
 
 interface ChatTransport {
     suspend fun post(url: String, apiKey: String, body: String, timeoutSeconds: Int): TransportResponse
+
+    /** 模型列表是 GET；默认实现委托给 post，方便测试替身只实现一个方法。 */
+    suspend fun get(url: String, apiKey: String, timeoutSeconds: Int): TransportResponse =
+        post(url, apiKey, "", timeoutSeconds)
 }
 
 /**
@@ -51,18 +76,35 @@ class HttpChatTransport : ChatTransport {
         apiKey: String,
         body: String,
         timeoutSeconds: Int,
+    ): TransportResponse = execute("POST", url, apiKey, body, timeoutSeconds)
+
+    override suspend fun get(
+        url: String,
+        apiKey: String,
+        timeoutSeconds: Int,
+    ): TransportResponse = execute("GET", url, apiKey, null, timeoutSeconds)
+
+    /** post 与 get 共用的执行体：只有写 body 的请求才 setDoOutput。 */
+    private suspend fun execute(
+        method: String,
+        url: String,
+        apiKey: String,
+        body: String?,
+        timeoutSeconds: Int,
     ): TransportResponse = withContext(Dispatchers.IO) {
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
+            requestMethod = method
             connectTimeout = timeoutSeconds * 1000
             readTimeout = timeoutSeconds * 1000
-            doOutput = true
+            doOutput = body != null
             setRequestProperty("Content-Type", "application/json; charset=utf-8")
             setRequestProperty("Accept", "application/json")
             setRequestProperty("Authorization", "Bearer $apiKey")
         }
         try {
-            connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+            if (body != null) {
+                connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+            }
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
@@ -100,22 +142,127 @@ class OpenAiClient(private val transport: ChatTransport = HttpChatTransport()) {
         return Result.success(content)
     }
 
+    /**
+     * 连通性测试专用：只判断「能不能连上、能不能拿到模型回复」，
+     * 不要求回复是账单 JSON，也不走 [complete] 的账单文本链路。
+     */
+    suspend fun probe(request: ChatRequest): ProbeOutcome {
+        val url = AiUrls.chatUrl(request.endpoint.baseUrl)
+        val body = buildBody(request)
+        val response = try {
+            transport.post(url, request.apiKey, body, request.timeoutSeconds)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            return AiProbe.classifyThrowable(e)
+        }
+        return AiProbe.classify(response.status, response.body)
+    }
+
+    /**
+     * 获取服务商模型列表。Base URL 已含 /v1 时不会重复拼接（见 [AiUrls.modelsUrl]）。
+     */
+    suspend fun listModels(
+        baseUrl: String,
+        apiKey: String,
+        timeoutSeconds: Int,
+    ): ModelListOutcome {
+        val response = try {
+            transport.get(AiUrls.modelsUrl(baseUrl), apiKey, timeoutSeconds)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            val probe = AiProbe.classifyThrowable(e)
+            val reason = (probe as? ProbeOutcome.Failure)?.reason ?: ProbeFailure.SERVER_ERROR
+            val detail = (probe as? ProbeOutcome.Failure)?.detail.orEmpty()
+            return ModelListOutcome.Failure(reason, detail)
+        }
+        return ModelListParser.parse(response.status, response.body)
+    }
+
     /** 组装请求体。只放协议标准字段，不掺任何厂商专有参数。 */
-    fun buildBody(request: ChatRequest): String {
-        val messages = Json.arr(
-            request.messages.map { message ->
-                Json.obj("role" to Json.str(message.role), "content" to Json.str(message.content))
-            }
+    fun buildBody(request: ChatRequest, tools: JsonValue.Arr? = null): String {
+        val messages = Json.arr(request.messages.map { messageJson(it) })
+        val fields = mutableListOf<Pair<String, JsonValue?>>(
+            "model" to Json.str(request.endpoint.model),
+            "messages" to messages,
+            "temperature" to Json.num(request.temperature),
+            "max_tokens" to Json.num(request.maxTokens.toLong()),
+            "stream" to Json.bool(false),
         )
-        return Json.dumps(
-            Json.obj(
-                "model" to Json.str(request.endpoint.model),
-                "messages" to messages,
-                "temperature" to Json.num(request.temperature),
-                "max_tokens" to Json.num(request.maxTokens.toLong()),
-                "stream" to Json.bool(false),
+        if (tools != null && tools.items.isNotEmpty()) {
+            fields += "tools" to tools
+            fields += "tool_choice" to Json.str("auto")
+        }
+        return Json.dumps(Json.obj(*fields.toTypedArray()))
+    }
+
+    /** 单条消息的 JSON：tool 角色带 tool_call_id，assistant 带 tool_calls。 */
+    private fun messageJson(message: ChatMessage): JsonValue.Obj {
+        val fields = mutableListOf<Pair<String, JsonValue?>>(
+            "role" to Json.str(message.role),
+        )
+        if (message.role == ChatMessage.ASSISTANT && message.toolCalls.isNotEmpty()) {
+            // 带工具调用的 assistant 轮次，content 允许为空字符串，部分服务商要求字段存在。
+            fields += "content" to Json.str(message.content)
+            fields += "tool_calls" to Json.arr(
+                message.toolCalls.map { call ->
+                    Json.obj(
+                        "id" to Json.str(call.id),
+                        "type" to Json.str("function"),
+                        "function" to Json.obj(
+                            "name" to Json.str(call.name),
+                            "arguments" to Json.str(call.arguments),
+                        ),
+                    )
+                }
             )
-        )
+        } else {
+            fields += "content" to Json.str(message.content)
+            message.toolCallId?.let { fields += "tool_call_id" to Json.str(it) }
+        }
+        return Json.obj(*fields.toTypedArray())
+    }
+
+    /** 一轮对话：可能是纯文本，也可能要求调用工具。 */
+    suspend fun completeTurn(request: ChatRequest, tools: JsonValue.Arr? = null): Result<ChatTurn> {
+        val url = AiUrls.chatUrl(request.endpoint.baseUrl)
+        val body = buildBody(request, tools)
+        val response = try {
+            transport.post(url, request.apiKey, body, request.timeoutSeconds)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: SocketTimeoutException) {
+            return Result.failure(AiException(AiError(AiErrorType.TIMEOUT, "socket timeout")))
+        } catch (e: Exception) {
+            return e.toAiError().let { Result.failure(AiException(it)) }
+        }
+        if (response.status !in 200..299) {
+            return Result.failure(AiException(mapError(response.status, response.body)))
+        }
+        val turn = extractTurn(response.body)
+            ?: return Result.failure(AiException(AiError(AiErrorType.BAD_RESPONSE, "no message in choices")))
+        return Result.success(turn)
+    }
+
+    /** 从响应体抽出这一轮的文本与工具调用；两者都为空视为格式异常。 */
+    fun extractTurn(body: String): ChatTurn? {
+        val root = Json.parseOrNull(body) as? JsonValue.Obj ?: return null
+        val choice = root.arr("choices")?.get(0) as? JsonValue.Obj ?: return null
+        val message = choice.obj("message")
+        val content = message?.str("content") ?: choice.str("text")
+        val calls = message?.arr("tool_calls")?.items.orEmpty().mapNotNull { item ->
+            val obj = item as? JsonValue.Obj ?: return@mapNotNull null
+            val function = obj.obj("function") ?: return@mapNotNull null
+            val name = function.str("name")?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            ToolCall(
+                id = obj.str("id").orEmpty().ifBlank { name },
+                name = name,
+                arguments = function.str("arguments").orEmpty(),
+            )
+        }
+        if (content.isNullOrBlank() && calls.isEmpty()) return null
+        return ChatTurn(content?.takeIf { it.isNotBlank() }, calls)
     }
 
     fun extractContent(body: String): String? {

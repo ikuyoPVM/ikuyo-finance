@@ -3,12 +3,13 @@
 个人生活成本记账 App。Kotlin + Jetpack Compose + Material 3，MVVM + Repository，
 Room 本地存储，DataStore 偏好，Coroutines + Flow。
 
-当前版本：`0.6.0`（versionCode 7；阶段 0 工程基础 + 阶段 1 核心记账 MVP + 阶段 2 预算/标签/历史/首页自定义
-+ 阶段 3 AI 能力接入 + 阶段 4 统计与智能分析 + 阶段 5 高级财务管理 + 阶段 6 数据管理与发布）
+当前版本：`0.6.1`（versionCode 8；阶段 0 工程基础 + 阶段 1 核心记账 MVP + 阶段 2 预算/标签/历史/首页自定义
++ 阶段 3 AI 能力接入 + 阶段 4 统计与智能分析 + 阶段 5 高级财务管理 + 阶段 6 数据管理与发布
++ 维护迭代 01 AI 能力优化与账单日期调整）
 
 > 构建状态：已在 JDK 17 + Gradle 8.9 + compileSdk 35 下构建 Debug 与 **签名 Release**（R8）；
-> `:app:testDebugUnitTest` **300 项单测全绿**，并在 Android 15（API 35, 1080×2400）模拟器上
-> 逐屏跑通核心流程，完成 v1 → v2 → … → v9 九次覆盖安装迁移验证与 versionCode 6 → 7 升级验证，
+> `:app:testDebugUnitTest` **306 项单测全绿**，并在 Android 15（API 35, 1080×2400）模拟器上
+> 逐屏跑通核心流程，完成 v1 → v2 → … → v10 十次覆盖安装迁移验证与 versionCode 6 → 7 → 8 升级验证，
 > 备份/恢复、CSV 与 Excel 导出、CSV 导入、多语言、提醒均真机验证（见文末「八、验证记录」）。
 
 截图（真机运行截图，位于 `docs/screenshots/`）：
@@ -94,7 +95,8 @@ Release 签名：仓库里不含密钥。自行生成后放在 `keystore/ikuyo-r
 ```
 app/src/main/java/xyz/ikuyo/finance/
 ├── core/                  Money（分为单位的金额运算）、Time、Json、FlatJson、BillSnapshot、UiEvent、
-│                          Csv（编解码与公式注入防护）、AppLanguage（语言偏好的同步读写）
+│                          NoticeKind（提示语义分级）、Csv（编解码与公式注入防护）、
+│                          AppLanguage（语言偏好的同步读写）
 ├── domain/
 │   ├── model/             Bill、BillType、BillDraft、Summary、Budget、BudgetPeriod、BillCandidate、
 │   │                      BillOperation、AiConfig/AiPersona、Category、Tag、MonthlyReport
@@ -111,9 +113,12 @@ app/src/main/java/xyz/ikuyo/finance/
 │   │                      BackupRepository（单事务恢复与自检）
 │   ├── export/            CsvExporter（账单/预算/操作/分类/标签）、ExcelExporter（四个工作表的 SpreadsheetML）
 │   ├── import/            CsvImporter（表头识别、逐行校验、组合键查重）
-│   └── ai/                AiUrls、AiErrors、ApiKeyStore、AiConfigCodec、AiSettingsRepository、
-│                          OpenAiClient、AiService、AiContextBuilder、AiBillParser、SpendingAnalysis
+│   └── ai/                AiUrls、AiErrors、AiProbe（连通性测试独立判定）、AiModelCatalog（服务商模型列表）、
+│                          ApiKeyStore、AiConfigCodec、AiSettingsRepository、
+│                          OpenAiClient（含 tools/tool_calls）、AiService（含 chatWithTools 工具循环）、
+│                          AiTools（11 个只读工具与执行器）、AiContextBuilder、AiBillParser、SpendingAnalysis
 ├── notify/                DailyReminder（频道、排期、通知）、DailyReminderReceiver（到点判断当天有无账单）
+├── ui/                    components/Common（卡片、金额、空态等共用组件）、notice/（统一的应用内提示条）
 ├── di/Graph.kt            手写依赖容器（单例，无 Hilt）
 └── feature/               home / bills / budget / tags / categories / trash / detail / operations /
                            mine / ai（AI 对话 + 手动记账 + AI 设置）/ stats（统计与分析）/ reports（月报）/
@@ -129,7 +134,7 @@ AI 不能绕过业务层直接改库。
 月度总结的数字都来自它（或它之上的 `SpendingForecast` / `AnomalyDetector` / `MonthlySummaryBuilder`），
 图表与提示词不各算一套。
 
-## 四、数据库（Room，version = 9）
+## 四、数据库（Room，version = 10）
 
 | 表 | 说明 |
 | --- | --- |
@@ -158,8 +163,12 @@ AI 不能绕过业务层直接改库。
 - `MIGRATION_6_7`：新建 `debts`、`debt_payments`。
 - `MIGRATION_7_8`：新建 `savings_goals`、`savings_entries`。
 - `MIGRATION_8_9`：`bills` 增列 `rateSource`（默认 `MANUAL`）、`rateUpdatedAt`（默认 0），为汇率快照记录来源与时间。
+- `MIGRATION_9_10`：账单日期只精确到日。把既有 `occurredAt` 截断到**当地日历日的零点**
+  （`strftime(..., 'localtime', 'start of day', 'utc')`），只丢时分秒，不偏移、不清空，
+  所以升级后账单仍在同一天、金额与统计口径不变。
 
-每次迁移都在模拟器上用**覆盖安装**逐版验证（v1 的余额 ¥964.00 一路升级到 v9 后完整保留）；
+每次迁移都在模拟器上用**覆盖安装**逐版验证（v1 的余额 ¥964.00 一路升级到 v10 后完整保留，
+v9 → v10 后仍是 8 笔 / 本月支出 ¥146.70 / 总余额 ¥853.30）；
 仓库里没有 instrumentation 迁移测试，迁移的正确性靠这条逐版覆盖安装的实测记录保证。
 项目不使用 `fallbackToDestructiveMigration`。
 
@@ -296,13 +305,39 @@ AI 不能绕过业务层直接改库。
 - **每日记账提醒**（我的 → 提醒）：可开关、可选时间；当天没有有效账单才提醒
   （已删除/已撤销不算），提醒后自动续排次日；用 `setAndAllowWhileIdle` 不必申请精确闹钟权限，
   权限被拒时给出「去系统设置开启通知」的说明；重启后按 `BOOT_COMPLETED` 重新排。
-- **发布构建**：`versionCode 7 / versionName 0.6.0`，Release 开启 R8 混淆与资源压缩
+- **发布构建**：`versionCode 8 / versionName 0.6.1`，Release 开启 R8 混淆与资源压缩
   （APK 2.26 MB，debug 12.56 MB），签名密钥不入 Git（`keystore/` 与 `keystore.properties` 已忽略，
   需单独备份）。
 
+**维护迭代 01（AI 能力优化与账单日期调整）**：
+
+- **模型从服务商列表选**（AI 设置 → 主模型）：填好 Base URL 与 API Key 后点「获取模型列表」，
+  走 `GET {Base URL}/models`（已含 `/v1` 时不重复拼接），解析 `data[].id`、过滤空值后展示；
+  支持搜索、刷新与记住最近一次成功列表，**没有手填模型的入口**，保存的是模型 ID。
+  改 Base URL 或 API Key 后旧列表立即失效并提示重新获取；获取失败时已填的 URL / 已选模型**不会被清空**。
+  API Key 仍走 Android Keystore 加密，界面掩码，错误提示只显示 `sk-l…demo` 这类前后缀。
+- **连通性测试与账单解析彻底分离**：测试发一条固定的 `PROBE_PROMPT`，由独立的 `AiProbe` 判定结果，
+  不再复用 `AiBillParser`（这也是过去「填好配置却提示无法解析账单内容」的根因）。
+  失败按原因给不同文案：未配置完整、API Key 无效或未获授权、无权限、接口地址不存在、请求过于频繁、
+  服务暂时不可用、连接超时、无法连接、返回格式异常、接口已响应但无内容、模型不可用。
+- **AI 主动查数据（Tool / Function Calling）**：11 个只读工具
+  `get_account_summary`、`query_transactions`、`get_category_statistics`、`get_spending_trend`、
+  `get_budget_status`、`get_tag_statistics`、`get_recurring_expenses`、`get_installment_summary`、
+  `get_debt_summary`、`get_savings_goals`、`search_transactions`。
+  工具全部经 Repository 与 `Statistics` 查询，**不接触 Room、不生成也不执行 SQL**；
+  工具名走白名单，参数有类型与枚举约束，单次最多 50 行、结果超 4000 字符截断、
+  区间最多 400 天、最多 4 轮调用、整体 90 秒超时；只用只读工具，不能删改任何数据。
+  相对日期由 App 按设备当天算好再传给工具，模型不自己猜日期；AI 对话页发送时会显示
+  「正在汇总收支…」「正在查账单…」这类当前动作。
+- **账单日期只到日**：记账/编辑只选日期（不再有小时分钟），详情页与列表也只显示日期；
+  数据库升到 v10 把既有 `occurredAt` 截断到当天零点，同日多笔按 `createdAt` 稳定排序；
+  CSV / Excel / 备份里的日期同样是 `yyyy-MM-dd`。
+- **统一的应用内提示**：全部页面改用同一套提示条（成功/信息/警告/错误四级配色），
+  成功自动消失、失败可手动关闭，删除类操作只在提示条上给「撤销」；连续相同文案 1.2 秒内不重复堆叠。
+
 ## 七、测试
 
-`.\gradlew.bat :app:testDebugUnitTest` → **300 项，0 失败**：
+`.\gradlew.bat :app:testDebugUnitTest` → **306 项，0 失败**：
 
 | 测试类 | 用例数 | 覆盖内容 |
 | --- | --- | --- |
@@ -333,6 +368,7 @@ AI 不能绕过业务层直接改库。
 | `ExcelExporterTest` | 12 | 四个工作表与 readme 结构、数值与百分比单元格类型、XML 转义、列名 AA 进位、统计数字与统计服务一致 |
 | `BackupCodecTest` | 17 | 17 个集合往返、checksum 覆盖范围、未知集合/设置不致命、数据版本高拒绝、引用缺失告警、枚举与金额精度保留 |
 | `BackupCryptoTest` | 10 | PBKDF2 + AES-GCM 往返、错密码与文件损坏分别识别、salt/iv 随机、空密码拒绝、信封不含明文 |
+| `AiToolsTest` | 6 | 11 个工具名唯一且与白名单一致、描述非空、参数都是 object 且 required 都在 properties 里、range 枚举与区间常量一致、schema 可被重新解析、`toJson` 包完整 function |
 
 单元测试只覆盖纯逻辑；图表渲染、迁移与端到端流程走模拟器人工验证。
 
@@ -419,6 +455,33 @@ AI 不能绕过业务层直接改库。
     装机后中文默认、记账/列表/统计/备份/导出全可用；
     `versionCode 6 → 7` 覆盖安装后 `versionName 0.6.0`、旧账单（1 笔 ¥12.50）完整保留。
 
+- 维护迭代 01 走查（数据库 v9 → v10 覆盖安装，旧数据完整保留）：
+  - **升级不丢不偏**：v9 → v10 覆盖安装后仍是 8 笔账单、本月支出 ¥146.70、本月收入 ¥1,000.00、
+    总余额 ¥853.30、储蓄 ¥0.00；餐饮 ¥119.30（4 笔）、未分类 ¥27.40（3 笔）与升级前一致，
+    账单日期只丢时分秒、没有跨天偏移。
+  - **模型列表**：Base URL `http://10.0.2.2:8901/v1` 点「获取模型列表」→ `共 2 个模型`
+    （`stub-gpt-4o-mini` / `stub-tool-pro`），搜索框可按名称过滤，列表里没有手填入口；
+    改 Base URL 后 `已选择：…` 立刻消失，必须重新获取再选。停掉本地服务再点「刷新」→
+    `连接超时，请检查网络或服务商状态。`，而 Base URL 与已选模型**仍留在界面上**。
+  - **连通性测试的错误分流**（造错服务 8902，逐条看提示）：
+    401 → `API Key 无效或未获授权。`；404 → `接口地址或接口路径不存在，请检查 Base URL。`；
+    40 秒延迟 + 30 秒超时 → `连接超时，请检查网络或服务商状态。`；
+    200 但返回 HTML → `服务商返回格式异常，可能不是 OpenAI 兼容接口。`；
+    配置正确 → `成功：stub-gpt-4o-mini · 12 ms`。整个过程没有生成账单，也没有新增聊天消息。
+  - **AI 主动查数据**（本地假模型按关键词选工具，两轮往返 `tools=11`）：
+    `get_account_summary` → 支出 146.70 / 收入 1000.00 / 净 853.30 / 8 笔；
+    `get_budget_status` → 餐饮 额度 500.00 / 已用 119.30 / 剩余 380.70、总预算 3000.00 / 已用 146.70 / 剩余 2853.30；
+    `get_category_statistics` → 餐饮 119.30（4 笔，81.32%）、未分类 27.40（3 笔，18.67%）；
+    `get_spending_trend` → 11-10…11-14 均为 0.00、11-15 为 146.70；
+    `query_transactions` → 5 行含日期/类型/金额/分类/标签/支付方式/备注/来源；
+    `get_tag_statistics` → `work` 65.90（3 笔，44.92%）；
+    `search_transactions`（咖啡）、`get_recurring_expenses`、`get_installment_summary`、
+    `get_debt_summary`、`get_savings_goals` → 均返回 `count: 0` 与空列表（没有数据就说没有）。
+    期间修掉两处真实缺陷：预算工具误把「额度+结转」当剩余金额（改为 `可用 − 已用`）；
+    上期为 0 时对比百分比输出空对象 `{}`（改为 `n/a`，不再让模型去猜）。
+  - **账单日期只到日**：记账页只有日期选择器，账单详情显示 `2026-11-15`，同日多笔顺序稳定；
+    CSV 与 Excel 导出的日期列都是 `yyyy-MM-dd`。
+
 ## 九、已知限制
 
 - 备份恢复走的是「一个事务里整体覆盖」：没有合并（merge）模式，也不做跨设备同步或云盘上传，
@@ -438,6 +501,11 @@ AI 不能绕过业务层直接改库。
   接口不可达时按缓存使用并强制提示，不做离线汇率推算。
 - 已支付的固定支出/分期如果后来被删除，计划日期不会回退（避免来回抖动），需要时手动调整。
 - AI 对话不是流式输出；「已忽略」标记只在内存，重启后候选卡会回到可确认状态（不影响金额）。
+- AI 工具调用是「最多 4 轮、整体 90 秒」的同步循环：复杂问题会多等几秒，超时后只回一句失败原因，
+  不会把已查到的数据拼成半截答案。
+- 工具返回单次最多 50 行、结果超 4000 字符截断；超大账本想「一次看完所有账单」不现实，
+  需要按区间或分类缩小问题范围。
+- 模型列表只缓存最近一次成功结果：换网络或服务商改了目录时需要手动「刷新」。
 - 预测是线性外推：数据少于约一周或某天占比过高时可信度会自动降级，但不做季节性建模。
 - 异常检测需要一定历史量（单笔偏高要求该分类 ≥ 20 笔历史），新用户短期内不会提示。
 - 统计缓存是单条记忆（只保留最近一次输入的结果），连续来回切换区间会重算。

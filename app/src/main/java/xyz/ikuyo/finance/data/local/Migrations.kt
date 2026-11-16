@@ -385,6 +385,16 @@ object Migrations {
         }
     }
 
+    val MIGRATION_9_10 = object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            // 账单日期只精确到日：把既有 occurredAt 截断到「当地日历日的零点」。
+            // 只保留原来的日历日，不偏移、不清空，所以账单仍落在同一天，金额与统计口径不变。
+            db.execSQL(
+                "UPDATE `bills` SET `occurredAt` = CAST(strftime('%s', datetime(`occurredAt` / 1000, 'unixepoch', 'localtime', 'start of day', 'utc')) AS INTEGER) * 1000 WHERE `occurredAt` > 0"
+            )
+        }
+    }
+
     val ALL: Array<Migration> = arrayOf(
         MIGRATION_1_2,
         MIGRATION_2_3,
@@ -394,5 +404,6 @@ object Migrations {
         MIGRATION_6_7,
         MIGRATION_7_8,
         MIGRATION_8_9,
+        MIGRATION_9_10,
     )
 }

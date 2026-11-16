@@ -44,6 +44,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import xyz.ikuyo.finance.core.Money
 import xyz.ikuyo.finance.core.Time
 import xyz.ikuyo.finance.core.UiEvent
+import xyz.ikuyo.finance.ui.notice.AppSnackbarHost
+import xyz.ikuyo.finance.ui.notice.showEvent
 import xyz.ikuyo.finance.domain.model.Bill
 import xyz.ikuyo.finance.domain.model.BillSortOrder
 import xyz.ikuyo.finance.domain.model.BillType
@@ -69,11 +71,7 @@ fun BillsScreen(
         viewModel.events.collect { event ->
             when (event) {
                 is UiEvent.Message -> {
-                    val result = snackbarHostState.showSnackbar(
-                        message = event.text,
-                        actionLabel = if (event.undoable) "撤销" else null,
-                        duration = SnackbarDuration.Short,
-                    )
+                    val result = snackbarHostState.showEvent(event)
                     if (result == SnackbarResult.ActionPerformed && event.undoable) {
                         viewModel.undoDelete()
                     }
@@ -83,7 +81,7 @@ fun BillsScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { AppSnackbarHost(snackbarHostState) },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
         Column(

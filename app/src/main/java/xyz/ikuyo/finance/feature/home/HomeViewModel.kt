@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import xyz.ikuyo.finance.core.Money
 import xyz.ikuyo.finance.core.Time
+import xyz.ikuyo.finance.core.NoticeKind
 import xyz.ikuyo.finance.core.UiEvent
 import xyz.ikuyo.finance.data.repository.BillRepository
 import xyz.ikuyo.finance.data.repository.BudgetAlertRepository
@@ -224,7 +225,7 @@ class HomeViewModel(
                     )
                 )
             }.onFailure { error ->
-                _events.emit(UiEvent.Message(error.message ?: "保存失败，请重试"))
+                _events.emit(UiEvent.Message(error.message ?: "保存失败，请重试", NoticeKind.Error))
             }
         }
     }

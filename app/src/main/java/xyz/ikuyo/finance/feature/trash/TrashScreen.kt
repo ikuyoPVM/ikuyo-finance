@@ -38,6 +38,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import xyz.ikuyo.finance.core.Time
 import xyz.ikuyo.finance.core.UiEvent
+import xyz.ikuyo.finance.ui.notice.AppSnackbarHost
+import xyz.ikuyo.finance.ui.notice.showEvent
 import xyz.ikuyo.finance.ui.components.BillAmount
 import xyz.ikuyo.finance.ui.components.DividerThin
 import xyz.ikuyo.finance.ui.components.EmptyHint
@@ -56,13 +58,13 @@ fun TrashScreen(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is UiEvent.Message -> snackbarHostState.showSnackbar(event.text)
+                is UiEvent.Message -> snackbarHostState.showEvent(event)
             }
         }
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { AppSnackbarHost(snackbarHostState) },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (state.selectionMode) {
@@ -144,7 +146,7 @@ fun TrashScreen(
                                         style = MaterialTheme.typography.bodyLarge,
                                     )
                                     Text(
-                                        text = "${Time.formatDateTime(bill.occurredAt)} · ${bill.categoryName ?: "未分类"}",
+                                        text = "${Time.formatFullDate(bill.occurredAt)} · ${bill.categoryName ?: "未分类"}",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )

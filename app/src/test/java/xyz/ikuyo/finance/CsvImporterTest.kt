@@ -32,7 +32,7 @@ class CsvImporterTest {
         amountMinor: Long = 2800L,
         categoryId: Long? = 1L,
         note: String = "午饭",
-        occurredAt: Long = at(11, 15, 12, 30),
+        occurredAt: Long = at(11, 15, 0),
     ): Bill = Bill(
         id = id,
         type = type,
@@ -60,7 +60,7 @@ class CsvImporterTest {
     }
 
     @Test
-    fun `正常行解析出金额类型分类与时间`() {
+    fun `正常行解析出金额类型分类与日期`() {
         val plan = CsvImporter.plan(csv("2026-11-15,12:30,支出,28.00,CNY,1,餐饮,午饭,微信"), emptyList(), categories)
         assertNull(plan.error)
         assertEquals(1, plan.rows.size)
@@ -74,7 +74,7 @@ class CsvImporterTest {
         assertEquals("餐饮", row.categoryName)
         assertEquals(PaymentMethod.WECHAT, row.paymentMethod)
         assertEquals("午饭", row.note)
-        assertEquals(at(11, 15, 12, 30), row.occurredAt)
+        assertEquals(Time.startOfDay(LocalDate.of(2026, 11, 15)), row.occurredAt)
         assertTrue(row.importable)
     }
 
@@ -189,10 +189,10 @@ class CsvImporterTest {
     }
 
     @Test
-    fun `时间缺失时按中午导入`() {
+    fun `只给日期时按当天零点导入`() {
         val plan = CsvImporter.plan("日期,类型,原币金额\r\n2026-11-15,支出,28.00", emptyList(), categories)
         assertNull(plan.error)
-        assertEquals(at(11, 15, 12, 0), plan.rows.first().occurredAt)
+        assertEquals(Time.startOfDay(LocalDate.of(2026, 11, 15)), plan.rows.first().occurredAt)
     }
 
     @Test
@@ -215,9 +215,9 @@ class CsvImporterTest {
     fun `导出文件可以被重新导入并全部识别为重复`() {
         val exported = Csv.file(
             listOf(
-                listOf("账单ID", "日期", "时间", "类型", "原币金额", "币种", "汇率", "本币金额", "分类", "标签", "支付方式", "备注", "来源", "退款对应账单ID", "创建时间", "是否已删除")
+                listOf("账单ID", "日期", "类型", "原币金额", "币种", "汇率", "本币金额", "分类", "标签", "支付方式", "备注", "来源", "退款对应账单ID", "创建时间", "是否已删除")
                     .map { Csv.escapeField(it) },
-                listOf("1", "2026-11-15", "12:30", "支出", "28.00", "CNY", "1", "28.00", "餐饮", "", "微信", "午饭", "手动", "", "2026-11-15 07:48:22", "否")
+                listOf("1", "2026-11-15", "支出", "28.00", "CNY", "1", "28.00", "餐饮", "", "微信", "午饭", "手动", "", "2026-11-15 07:48:22", "否")
                     .map { Csv.escapeField(it) },
             ),
         )

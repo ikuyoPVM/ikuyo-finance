@@ -1,6 +1,7 @@
 package xyz.ikuyo.finance.domain.usecase
 
 import xyz.ikuyo.finance.core.Money
+import xyz.ikuyo.finance.core.Time
 import xyz.ikuyo.finance.data.mapper.toDomain
 import xyz.ikuyo.finance.data.repository.BillRepository
 import xyz.ikuyo.finance.data.repository.OperationRepository
@@ -43,7 +44,7 @@ class EditBillUseCase(
             categoryId = draft.categoryId,
             paymentMethod = draft.paymentMethod.dbValue,
             note = draft.note.trim(),
-            occurredAt = draft.occurredAt,
+            occurredAt = Time.startOfDayMillis(draft.occurredAt),
             source = draft.source.dbValue,
             refundOfBillId = draft.refundOfBillId,
             // 汇率没变时保留原来的来源与时间，只有改了汇率才写入新的快照信息。

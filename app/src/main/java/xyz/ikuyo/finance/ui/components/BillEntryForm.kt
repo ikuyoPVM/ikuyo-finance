@@ -258,7 +258,7 @@ fun BillEntryForm(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = "消费时间：${Time.formatDateTime(occurredAt)}",
+                text = "消费日期：${Time.formatFullDate(occurredAt)}",
                 style = MaterialTheme.typography.bodyMedium,
             )
             TextButton(onClick = { showDatePicker = true }) { Text("改日期") }
@@ -343,13 +343,12 @@ fun BillEntryForm(
     }
 }
 
-/** DatePicker 返回 UTC 零点，这里只取日期，保留原有的时分。 */
+/** DatePicker 返回 UTC 零点，这里只取日期：账单日期不记时分秒，统一落在当天本地零点。 */
 private fun mergePickedDate(pickedUtcMillis: Long, originalMillis: Long): Long {
     val date: LocalDate = Instant.ofEpochMilli(pickedUtcMillis)
         .atZone(ZoneOffset.UTC)
         .toLocalDate()
-    val time = Time.toLocalDateTime(originalMillis).toLocalTime()
-    return Time.toMillis(date, time)
+    return Time.startOfDay(date)
 }
 /**
  * 金额输入的防呆处理：只保留数字与一个小数点，小数最多两位。

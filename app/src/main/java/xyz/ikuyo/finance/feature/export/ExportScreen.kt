@@ -26,7 +26,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -49,9 +48,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import xyz.ikuyo.finance.core.NoticeKind
 import xyz.ikuyo.finance.core.Time
 import xyz.ikuyo.finance.domain.model.BillType
 import xyz.ikuyo.finance.ui.components.EmptyHint
+import xyz.ikuyo.finance.ui.notice.AppSnackbarHost
+import xyz.ikuyo.finance.ui.notice.showNotice
 import xyz.ikuyo.finance.ui.components.SectionCard
 import xyz.ikuyo.finance.ui.components.SectionTitle
 
@@ -94,11 +96,9 @@ fun ExportScreen(
         }
         pendingCsv = null
         scope.launch {
-            snackbar.showSnackbar(
-                result.fold(
-                    onSuccess = { "已导出 ${text.length} 字符，可直接用表格软件打开" },
-                    onFailure = { it.message ?: "导出失败" },
-                ),
+            result.fold(
+                onSuccess = { snackbar.showNotice("已导出 ${text.length} 字符，可直接用表格软件打开") },
+                onFailure = { snackbar.showNotice(it.message ?: "导出失败", NoticeKind.Error) },
             )
         }
     }
@@ -122,24 +122,22 @@ fun ExportScreen(
                 }
             }
             pendingXlsx = null
-            snackbar.showSnackbar(
-                result.fold(
-                    onSuccess = { "已导出 Excel 报告（${bytes.size} 字节），含四个工作表" },
-                    onFailure = { it.message ?: "导出失败" },
-                ),
+            result.fold(
+                onSuccess = { snackbar.showNotice("已导出 Excel 报告（${bytes.size} 字节），含四个工作表") },
+                onFailure = { snackbar.showNotice(it.message ?: "导出失败", NoticeKind.Error) },
             )
         }
     }
 
     LaunchedEffect(state.error) {
         state.error?.let { message ->
-            snackbar.showSnackbar(message)
+            snackbar.showNotice(message, NoticeKind.Error)
             viewModel.dismissNotice()
         }
     }
     LaunchedEffect(state.notice) {
         state.notice?.let { message ->
-            snackbar.showSnackbar(message)
+            snackbar.showNotice(message)
             viewModel.dismissNotice()
         }
     }
@@ -155,7 +153,7 @@ fun ExportScreen(
                 },
             )
         },
-        snackbarHost = { SnackbarHost(snackbar) },
+        snackbarHost = { AppSnackbarHost(snackbar) },
     ) { padding ->
         LazyColumn(
             modifier = Modifier

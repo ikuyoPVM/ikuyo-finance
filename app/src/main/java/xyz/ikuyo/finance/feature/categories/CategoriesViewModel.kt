@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import xyz.ikuyo.finance.core.NoticeKind
 import xyz.ikuyo.finance.core.UiEvent
 import xyz.ikuyo.finance.di.Graph
 import xyz.ikuyo.finance.domain.model.Category
@@ -45,7 +46,7 @@ class CategoriesViewModel : ViewModel() {
         viewModelScope.launch {
             repository.add(trimmed, emoji.ifBlank { "📦" }, colorArgb)
                 .onSuccess { emit("已添加分类：$trimmed") }
-                .onFailure { emit(it.message ?: "添加失败") }
+                .onFailure { emit(it.message ?: "添加失败", NoticeKind.Error) }
         }
     }
 
@@ -58,7 +59,7 @@ class CategoriesViewModel : ViewModel() {
         viewModelScope.launch {
             repository.rename(id, trimmed)
                 .onSuccess { emit("已重命名为：$trimmed") }
-                .onFailure { emit(it.message ?: "重命名失败") }
+                .onFailure { emit(it.message ?: "重命名失败", NoticeKind.Error) }
         }
     }
 
@@ -66,12 +67,12 @@ class CategoriesViewModel : ViewModel() {
         viewModelScope.launch {
             repository.deleteCustom(id)
                 .onSuccess { emit("已删除分类") }
-                .onFailure { emit(it.message ?: "删除失败") }
+                .onFailure { emit(it.message ?: "删除失败", NoticeKind.Error) }
         }
     }
 
-    private fun emit(text: String) {
-        viewModelScope.launch { _events.emit(UiEvent.Message(text)) }
+    private fun emit(text: String, kind: NoticeKind = NoticeKind.Success) {
+        viewModelScope.launch { _events.emit(UiEvent.Message(text, kind)) }
     }
 
     companion object {

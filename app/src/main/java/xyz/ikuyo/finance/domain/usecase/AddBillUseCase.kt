@@ -56,7 +56,7 @@ class AddBillUseCase(
             categoryId = draft.categoryId,
             paymentMethod = draft.paymentMethod.dbValue,
             note = draft.note.trim(),
-            occurredAt = draft.occurredAt,
+            occurredAt = Time.startOfDayMillis(draft.occurredAt),
             createdAt = Time.nowMillis(),
             source = draft.source.dbValue,
             refundOfBillId = draft.refundOfBillId,

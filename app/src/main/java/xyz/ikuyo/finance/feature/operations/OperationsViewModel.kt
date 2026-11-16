@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import xyz.ikuyo.finance.core.NoticeKind
 import xyz.ikuyo.finance.core.UiEvent
 import xyz.ikuyo.finance.data.repository.OperationRepository
 import xyz.ikuyo.finance.di.Graph
@@ -45,12 +46,12 @@ class OperationsViewModel(
         viewModelScope.launch {
             undoUseCase(operation.id)
                 .onSuccess { emit(it) }
-                .onFailure { emit(it.message ?: "撤销失败") }
+                .onFailure { emit(it.message ?: "撤销失败", NoticeKind.Error) }
         }
     }
 
-    private suspend fun emit(text: String) {
-        channel.send(UiEvent.Message(text))
+    private suspend fun emit(text: String, kind: NoticeKind = NoticeKind.Success) {
+        channel.send(UiEvent.Message(text, kind))
     }
 
     companion object {

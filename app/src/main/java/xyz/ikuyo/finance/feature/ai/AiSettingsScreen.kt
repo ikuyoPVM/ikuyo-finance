@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -22,9 +24,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -42,6 +45,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import xyz.ikuyo.finance.core.UiEvent
+import xyz.ikuyo.finance.ui.notice.AppSnackbarHost
+import xyz.ikuyo.finance.ui.notice.showEvent
 import xyz.ikuyo.finance.domain.model.AiConfig
 import xyz.ikuyo.finance.domain.model.AiPersona
 import xyz.ikuyo.finance.ui.components.SectionCard
@@ -56,12 +61,12 @@ fun AiSettingsScreen(
     val snackbar = remember { SnackbarHostState() }
 
     LaunchedEffect(viewModel) {
-        viewModel.events.collect { event -> if (event is UiEvent.Message) snackbar.showSnackbar(event.text) }
+        viewModel.events.collect { event -> if (event is UiEvent.Message) snackbar.showEvent(event) }
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
+    Scaffold(snackbarHost = { AppSnackbarHost(snackbar) }) { padding ->
         LazyColumn(
-            modifier = Modifier.padding(padding),
+            modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -86,7 +91,10 @@ fun AiSettingsScreen(
                     title = "主模型",
                     baseUrl = state.config.primary.baseUrl,
                     model = state.config.primary.model,
-                    hint = "Base URL 只写到 /v1，程序会自动补 /chat/completions",
+                    hint = "Base URL 只写到 /v1，程序会自动补 /chat/completions。模型必须先获取列表再选择。",
+                    models = state.models,
+                    onLoadModels = viewModel::loadModels,
+                    onRefreshModels = viewModel::refreshModels,
                     onSave = viewModel::savePrimary,
                 )
             }
@@ -96,6 +104,9 @@ fun AiSettingsScreen(
                     baseUrl = state.config.backup?.baseUrl.orEmpty(),
                     model = state.config.backup?.model.orEmpty(),
                     hint = "主模型连续失败时自动切换；留空表示不使用备用",
+                    models = state.models,
+                    onLoadModels = viewModel::loadModels,
+                    onRefreshModels = viewModel::refreshModels,
                     onSave = viewModel::saveBackup,
                     onClear = if (state.config.hasBackup) viewModel::clearBackup else null,
                 )
@@ -137,11 +148,33 @@ private fun EndpointCard(
     baseUrl: String,
     model: String,
     hint: String,
+    models: ModelListState,
+    onLoadModels: (String) -> Unit,
+    onRefreshModels: (String) -> Unit,
     onSave: (String, String) -> Unit,
     onClear: (() -> Unit)? = null,
 ) {
     var url by remember(baseUrl) { mutableStateOf(baseUrl) }
     var name by remember(model) { mutableStateOf(model) }
+    var query by remember { mutableStateOf("") }
+
+    // 地址改了就说明原来那份列表不再对应当前配置，清除已选模型避免误保存。
+    LaunchedEffect(url) {
+        if (url.trim().trimEnd('/') != baseUrl.trim().trimEnd('/')) {
+            name = ""
+            query = ""
+        }
+    }
+
+    val loaded = models as? ModelListState.Success
+    val sameTarget = loaded != null &&
+        loaded.fetchedFor == url.trim().trimEnd('/').lowercase()
+    val options = if (sameTarget) {
+        loaded!!.models.filter { query.isBlank() || it.id.contains(query.trim(), ignoreCase = true) }
+    } else {
+        emptyList()
+    }
+    val missing = sameTarget && name.isNotBlank() && loaded!!.models.none { it.id == name.trim() }
 
     SectionCard {
         Text(title, style = MaterialTheme.typography.titleSmall)
@@ -154,18 +187,95 @@ private fun EndpointCard(
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("模型名") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = { onLoadModels(url) },
+                enabled = url.isNotBlank() && models != ModelListState.Loading,
+            ) {
+                Text(if (models is ModelListState.Success) "重新获取" else "获取模型列表")
+            }
+            if (models is ModelListState.Success || models is ModelListState.Failure) {
+                OutlinedButton(
+                    onClick = { onRefreshModels(url) },
+                    enabled = url.isNotBlank() && models != ModelListState.Loading,
+                ) {
+                    Text("刷新")
+                }
+            }
+        }
+        if (models == ModelListState.Loading) {
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+            Text(
+                "正在读取服务商返回的模型列表…",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        (models as? ModelListState.Failure)?.let { failure ->
+            Spacer(Modifier.height(8.dp))
+            Text(failure.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        }
+        if (sameTarget) {
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                label = { Text("搜索模型") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "共 ${loaded.models.size} 个模型${if (options.size != loaded.models.size) "，匹配 ${options.size} 个" else ""}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            options.take(12).forEach { option ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { name = option.id }
+                        .padding(vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(selected = name == option.id, onClick = { name = option.id })
+                    Column(Modifier.weight(1f)) {
+                        Text(option.id, style = MaterialTheme.typography.bodyMedium)
+                        option.ownedBy?.takeIf { it.isNotBlank() }?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+            if (options.isEmpty()) {
+                Text(
+                    "没有匹配的模型，换个关键词试试。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        if (missing) {
+            Text(
+                "当前选择的 ${name} 不在这次获取的列表中，请重新选择。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+        if (name.isNotBlank() && !missing) {
+            Spacer(Modifier.height(4.dp))
+            Text("已选择：$name", style = MaterialTheme.typography.bodySmall)
+        }
         Spacer(Modifier.height(4.dp))
         Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { onSave(url, name) }, enabled = url.isNotBlank() && name.isNotBlank()) {
+            Button(onClick = { onSave(url, name) }, enabled = url.isNotBlank() && name.isNotBlank() && !missing) {
                 Text("保存")
             }
             if (onClear != null) {

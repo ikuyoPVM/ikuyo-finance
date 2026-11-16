@@ -49,6 +49,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import xyz.ikuyo.finance.core.Money
 import xyz.ikuyo.finance.core.UiEvent
+import xyz.ikuyo.finance.ui.notice.AppSnackbarHost
+import xyz.ikuyo.finance.ui.notice.showEvent
 import xyz.ikuyo.finance.ui.components.DividerThin
 import xyz.ikuyo.finance.ui.components.EmptyHint
 import xyz.ikuyo.finance.ui.components.SectionCard
@@ -85,13 +87,13 @@ fun TagsScreen(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is UiEvent.Message -> snackbarHostState.showSnackbar(event.text)
+                is UiEvent.Message -> snackbarHostState.showEvent(event)
             }
         }
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { AppSnackbarHost(snackbarHostState) },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
         LazyColumn(

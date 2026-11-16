@@ -193,7 +193,8 @@ object CsvImporter {
         val payment = parsePayment(rawPayment)
 
         val note = cell("note").let { Csv.stripGuard(it) }
-        val occurredAt = Time.toMillis(date, time)
+        // 账单日期只到日：旧文件里的「时间」列仍然接受，但统一按当天零点入库，避免同一笔账单因时分不同而被判重复。
+        val occurredAt = Time.startOfDay(date)
 
         val key = duplicateKey(occurredAt, amountMinor, type, category?.id, note)
         val duplicateOf = existing.firstOrNull { bill ->

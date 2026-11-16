@@ -18,9 +18,12 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import xyz.ikuyo.finance.core.Money
 import xyz.ikuyo.finance.core.Time
+import xyz.ikuyo.finance.core.NoticeKind
 import xyz.ikuyo.finance.core.UiEvent
 import xyz.ikuyo.finance.data.ai.AiBillParser
 import xyz.ikuyo.finance.data.ai.AiContextBuilder
+import xyz.ikuyo.finance.data.ai.AiToolExecutor
+import xyz.ikuyo.finance.data.ai.AiTools
 import xyz.ikuyo.finance.data.ai.AiException
 import xyz.ikuyo.finance.data.ai.ChatMessage
 import xyz.ikuyo.finance.di.Graph
@@ -57,6 +60,8 @@ data class AiChatUiState(
     val categories: List<Category> = emptyList(),
     val tags: List<Tag> = emptyList(),
     val lastError: String? = null,
+    /** 正在查询数据时的进度提示；null 表示没在查。 */
+    val toolHint: String? = null,
 ) {
     val canSend: Boolean get() = input.isNotBlank() && !sending
     val showEmptyHint: Boolean get() = messages.isEmpty()
@@ -87,6 +92,34 @@ class AiChatViewModel : ViewModel() {
 
     private val parser = AiBillParser()
 
+    /** 工具执行器只持有仓储句柄，不碰 Room、不执行 SQL（计划书 3.2 权限要求）。 */
+    private val toolExecutor = AiToolExecutor(
+        billRepository = Graph.billRepository,
+        categoryRepository = Graph.categoryRepository,
+        tagRepository = Graph.tagRepository,
+        budgetRepository = Graph.budgetRepository,
+        fixedExpenseRepository = Graph.fixedExpenseRepository,
+        installmentRepository = Graph.installmentRepository,
+        debtRepository = Graph.debtRepository,
+        savingsRepository = Graph.savingsRepository,
+    )
+
+
+    /** 把工具名换成用户看得懂的短句，避免把 snake_case 甩到界面上。 */
+    private fun toolLabel(name: String): String = when (name) {
+        AiTools.GET_ACCOUNT_SUMMARY -> "正在汇总收支…"
+        AiTools.QUERY_TRANSACTIONS, AiTools.SEARCH_TRANSACTIONS -> "正在查账单…"
+        AiTools.GET_CATEGORY_STATISTICS -> "正在统计分类…"
+        AiTools.GET_TAG_STATISTICS -> "正在统计标签…"
+        AiTools.GET_SPENDING_TREND -> "正在算消费趋势…"
+        AiTools.GET_BUDGET_STATUS -> "正在核对预算…"
+        AiTools.GET_RECURRING_EXPENSES -> "正在查固定支出…"
+        AiTools.GET_INSTALLMENT_SUMMARY -> "正在查分期…"
+        AiTools.GET_DEBT_SUMMARY -> "正在查债务…"
+        AiTools.GET_SAVINGS_GOALS -> "正在查储蓄目标…"
+        else -> "正在查询数据…"
+    }
+
     private val local = MutableStateFlow(LocalState())
     private val _events = Channel<UiEvent>(Channel.BUFFERED)
     val events: Flow<UiEvent> = _events.receiveAsFlow()
@@ -97,7 +130,7 @@ class AiChatViewModel : ViewModel() {
     fun addManualBill(draft: BillDraft): Job = viewModelScope.launch {
         addBillUseCase(draft)
             .onSuccess { emit("已记一笔，可在「操作历史」撤销") }
-            .onFailure { emit(it.message ?: "记录失败") }
+            .onFailure { emit(it.message ?: "记录失败", NoticeKind.Error) }
     }
 
     val state: StateFlow<AiChatUiState> = combine(
@@ -120,6 +153,7 @@ class AiChatViewModel : ViewModel() {
             categories = categories,
             tags = tags,
             lastError = localState.lastError,
+            toolHint = localState.toolHint,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AiChatUiState())
 
@@ -212,8 +246,16 @@ class AiChatViewModel : ViewModel() {
                 summary = summary,
             )
 
-            val result = aiService.reply(history, systemPrompt)
-            local.value = local.value.copy(sending = false)
+            val result = aiService.chatWithTools(
+                messages = history,
+                systemPrompt = systemPrompt,
+                executor = toolExecutor,
+                onToolCall = { name ->
+                    // 工具可能在协程里连调多次，这里只关心「正在查」，用数据类别给用户一点确定感。
+                    local.value = local.value.copy(toolHint = toolLabel(name))
+                },
+            )
+            local.value = local.value.copy(sending = false, toolHint = null)
             result.fold(
                 onSuccess = { reply ->
                     val parsed = parser.parse(
@@ -361,7 +403,7 @@ class AiChatViewModel : ViewModel() {
                     }
                     emit("已撤销这笔账")
                 }
-                .onFailure { emit(it.message ?: "撤销失败") }
+                .onFailure { emit(it.message ?: "撤销失败", NoticeKind.Error) }
         }
     }
 
@@ -403,8 +445,8 @@ class AiChatViewModel : ViewModel() {
         }
     }
 
-    private suspend fun emit(text: String) {
-        _events.send(UiEvent.Message(text))
+    private suspend fun emit(text: String, kind: NoticeKind = NoticeKind.Success) {
+        _events.send(UiEvent.Message(text, kind))
     }
 
     private fun newId(): String = UUID.randomUUID().toString()
@@ -415,6 +457,7 @@ class AiChatViewModel : ViewModel() {
         val sending: Boolean = false,
         val usingBackup: Boolean = false,
         val lastError: String? = null,
+        val toolHint: String? = null,
     )
 
     companion object {

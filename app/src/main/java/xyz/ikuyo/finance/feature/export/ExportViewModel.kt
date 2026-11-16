@@ -261,17 +261,13 @@ class ExportViewModel(
         val billSheet = ExcelExporter.Sheet(
             name = "账单明细",
             header = listOf(
-                "账单ID", "日期", "时间", "类型", "原币金额", "币种", "汇率", "本币金额",
+                "账单ID", "日期", "类型", "原币金额", "币种", "汇率", "本币金额",
                 "分类", "标签", "支付方式", "备注", "来源", "退款对应账单ID", "创建时间", "是否已删除",
             ),
             rows = bills.map { bill ->
                 listOf(
                     ExcelExporter.Cell.Number(bill.id.toDouble()),
                     ExcelExporter.Cell.Text(ExcelExporter.date(bill.occurredAt)),
-                    ExcelExporter.Cell.Text(
-                        Time.toLocalDateTime(bill.occurredAt)
-                            .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")),
-                    ),
                     ExcelExporter.Cell.Text(bill.type.label),
                     ExcelExporter.Cell.Number(ExcelExporter.yuan(bill.amountMinor)),
                     ExcelExporter.Cell.Text(bill.currency),

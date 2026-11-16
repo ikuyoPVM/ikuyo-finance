@@ -62,14 +62,13 @@ class CsvExporterTest {
         val row = rows[1]
         assertEquals("14", row[0])
         assertEquals("2026-11-15", row[1])
-        assertEquals("12:30", row[2])
-        assertEquals("支出", row[3])
-        assertEquals("28.00", row[4])
-        assertEquals("CNY", row[5])
-        assertEquals("1", row[6])
-        assertEquals("28.00", row[7])
-        assertEquals("餐饮", row[8])
-        assertEquals("午饭", row[11])
+        assertEquals("支出", row[2])
+        assertEquals("28.00", row[3])
+        assertEquals("CNY", row[4])
+        assertEquals("1", row[5])
+        assertEquals("28.00", row[6])
+        assertEquals("餐饮", row[7])
+        assertEquals("午饭", row[10])
     }
 
     @Test
@@ -88,17 +87,17 @@ class CsvExporterTest {
             ),
         )
         val row = rows[1]
-        assertEquals("19.99", row[4])
-        assertEquals("USD", row[5])
-        assertEquals("6.672", row[6])
-        assertEquals("133.37", row[7])
+        assertEquals("19.99", row[3])
+        assertEquals("USD", row[4])
+        assertEquals("6.672", row[5])
+        assertEquals("133.37", row[6])
     }
 
     @Test
     fun `备注以公式前缀开头时被加保护前缀`() {
         val text = CsvExporter.bills(listOf(bill(1, note = "=SUM(A1:A9)")))
         val rows = Csv.parse(text)
-        assertEquals("'=SUM(A1:A9)", rows[1][11])
+        assertEquals("'=SUM(A1:A9)", rows[1][10])
         assertTrue(text.contains("'=SUM"))
     }
 
@@ -106,9 +105,9 @@ class CsvExporterTest {
     fun `金额为负也不会被当成公式`() {
         val text = CsvExporter.bills(listOf(bill(1, type = BillType.REFUND, amountMinor = 1_000L)))
         val rows = Csv.parse(text)
-        assertEquals("退款", rows[1][3])
+        assertEquals("退款", rows[1][2])
         // 退款不改写符号，原币金额仍是正数，便于表格求和时人工判断。
-        assertEquals("10.00", rows[1][4])
+        assertEquals("10.00", rows[1][3])
     }
 
     @Test
@@ -119,7 +118,7 @@ class CsvExporterTest {
                 tagNames = mapOf(1L to listOf("工作日", "外卖")),
             ),
         )
-        assertEquals("工作日、外卖", rows[1][9])
+        assertEquals("工作日、外卖", rows[1][8])
     }
 
     @Test
@@ -130,8 +129,8 @@ class CsvExporterTest {
                 deletedIds = setOf(3L),
             ),
         )
-        assertEquals("未分类", rows[1][8])
-        assertEquals("是", rows[1][15])
+        assertEquals("未分类", rows[1][7])
+        assertEquals("是", rows[1][14])
     }
 
     @Test

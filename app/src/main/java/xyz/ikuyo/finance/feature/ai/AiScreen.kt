@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -51,6 +53,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import xyz.ikuyo.finance.core.Money
 import xyz.ikuyo.finance.core.Time
 import xyz.ikuyo.finance.core.UiEvent
+import xyz.ikuyo.finance.ui.notice.AppSnackbarHost
+import xyz.ikuyo.finance.ui.notice.showEvent
 import xyz.ikuyo.finance.domain.model.AiChatMessage
 import xyz.ikuyo.finance.domain.model.BillCandidate
 import xyz.ikuyo.finance.domain.model.ChatRole
@@ -78,12 +82,12 @@ fun AiScreen(
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
-            if (event is UiEvent.Message) snackbarHostState.showSnackbar(event.text)
+            if (event is UiEvent.Message) snackbarHostState.showEvent(event)
         }
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { AppSnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         Column(
@@ -328,7 +332,29 @@ private fun Composer(
     onStop: () -> Unit,
     onRetry: () -> Unit,
 ) {
-    Row(
+    Column {
+        // 工具调用可能连查几张表，给一句「正在查账单…」，避免用户以为卡住了。
+        state.toolHint?.let { hint ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 20.dp, end = 20.dp, top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(12.dp),
+                    strokeWidth = 1.5.dp,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = hint,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 12.dp),
@@ -375,6 +401,7 @@ private fun Composer(
         }
     }
     Spacer(Modifier.height(4.dp))
+    }
 }
 
 @Composable
@@ -489,7 +516,7 @@ private fun CandidateCard(
                     append(" · ")
                     append(candidate.paymentMethod.label)
                     append(" · ")
-                    append(Time.formatDateTime(candidate.occurredAt))
+                    append(Time.formatFullDate(candidate.occurredAt))
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
